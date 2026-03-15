@@ -232,6 +232,78 @@ async function generateSummary(
   sessionID: string,
   userPrompt: string
 ): Promise<{ summary: string; type: string; tags: string[] } | null> {
+  // Opencode provider path (when opencodeProvider + opencodeModel configured)
+  if (CONFIG.opencodeProvider && CONFIG.opencodeModel) {
+    if (CONFIG.memoryModel) {
+      log("opencodeProvider takes precedence over memoryModel for auto-capture");
+    }
+
+    const { isProviderConnected, getStatePath, generateStructuredOutput } =
+      await import("./ai/opencode-provider.js");
+
+    if (!isProviderConnected(CONFIG.opencodeProvider)) {
+      throw new Error(
+        `opencode provider '${CONFIG.opencodeProvider}' is not connected. Check your opencode provider configuration.`
+      );
+    }
+
+    const { detectLanguage, getLanguageName } = await import("./language-detector.js");
+    const targetLang =
+      CONFIG.autoCaptureLanguage === "auto" || !CONFIG.autoCaptureLanguage
+        ? detectLanguage(userPrompt)
+        : CONFIG.autoCaptureLanguage;
+    const langName = getLanguageName(targetLang);
+
+    const systemPrompt = `You are a technical memory recorder for a software development project.
+
+RULES:
+1. ONLY capture technical work (code, bugs, features, architecture, config)
+2. SKIP non-technical by returning type="skip"
+3. NO meta-commentary or behavior analysis
+4. Include specific file names, functions, technical details
+5. Generate 2-4 technical tags (e.g., "react", "auth", "bug-fix")
+6. You MUST write the summary in ${langName}.
+
+FORMAT:
+## Request
+[1-2 sentences: what was requested, in ${langName}]
+
+## Outcome
+[1-2 sentences: what was done, include files/functions, in ${langName}]
+
+SKIP if: greetings, casual chat, no code/decisions made
+CAPTURE if: code changed, bug fixed, feature added, decision made`;
+
+    const aiPrompt = `${context}
+
+Analyze this conversation. If it contains technical work (code, bugs, features, decisions), create a concise summary and relevant tags. If it's non-technical (greetings, casual chat, incomplete requests), return type="skip" with empty summary.`;
+
+    const { z } = await import("zod");
+    const schema = z.object({
+      summary: z.string(),
+      type: z.string(),
+      tags: z.array(z.string()),
+    });
+
+    const result = await generateStructuredOutput({
+      providerName: CONFIG.opencodeProvider,
+      modelId: CONFIG.opencodeModel,
+      statePath: getStatePath(),
+      systemPrompt,
+      userPrompt: aiPrompt,
+      schema,
+      temperature:
+        CONFIG.memoryTemperature === false ? undefined : (CONFIG.memoryTemperature ?? 0.3),
+    });
+
+    return {
+      summary: result.summary,
+      type: result.type,
+      tags: (result.tags || []).map((t: string) => t.toLowerCase().trim()),
+    };
+  }
+
+  // Existing manual config path
   if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl) {
     throw new Error("External API not configured for auto-capture");
   }

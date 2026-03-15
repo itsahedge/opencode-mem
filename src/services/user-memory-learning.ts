@@ -147,6 +147,69 @@ async function analyzeUserProfile(
   context: string,
   existingProfile: UserProfile | null
 ): Promise<UserProfileData | null> {
+  if (CONFIG.opencodeProvider && CONFIG.opencodeModel) {
+    const { isProviderConnected, getStatePath, generateStructuredOutput } =
+      await import("./ai/opencode-provider.js");
+
+    if (!isProviderConnected(CONFIG.opencodeProvider)) {
+      throw new Error(
+        `opencode provider '${CONFIG.opencodeProvider}' is not connected. Check your opencode provider configuration.`
+      );
+    }
+
+    const systemPrompt = `You are a user behavior analyst for a coding assistant.
+
+Your task is to analyze user prompts and ${existingProfile ? "update" : "create"} a comprehensive user profile.
+
+CRITICAL: Detect the language used by the user in their prompts. You MUST output all descriptions, categories, and text in the SAME language as the user's prompts.
+
+Use the update_user_profile tool to save the ${existingProfile ? "updated" : "new"} profile.`;
+
+    const { z } = await import("zod");
+    const schema = z.object({
+      preferences: z.array(
+        z.object({
+          category: z.string(),
+          description: z.string(),
+          confidence: z.number().min(0).max(1),
+          evidence: z.array(z.string()).max(3),
+        })
+      ),
+      patterns: z.array(
+        z.object({
+          category: z.string(),
+          description: z.string(),
+        })
+      ),
+      workflows: z.array(
+        z.object({
+          description: z.string(),
+          steps: z.array(z.string()),
+        })
+      ),
+    });
+
+    const result = await generateStructuredOutput({
+      providerName: CONFIG.opencodeProvider,
+      modelId: CONFIG.opencodeModel,
+      statePath: getStatePath(),
+      systemPrompt,
+      userPrompt: context,
+      schema,
+      temperature:
+        CONFIG.memoryTemperature === false ? undefined : (CONFIG.memoryTemperature ?? 0.3),
+    });
+
+    if (existingProfile) {
+      const existingData: UserProfileData = JSON.parse(existingProfile.profileData);
+      return userProfileManager.mergeProfileData(
+        existingData,
+        result as unknown as Partial<UserProfileData>
+      );
+    }
+    return result as UserProfileData;
+  }
+
   if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl) {
     log("User Profile Config Check Failed:", {
       memoryModel: CONFIG.memoryModel,

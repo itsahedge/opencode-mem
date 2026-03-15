@@ -1,0 +1,6 @@
+150:  if (CONFIG.opencodeProvider && CONFIG.opencodeModel) {
+151:    const { isProviderConnected, getStatePath, generateStructuredOutput } =
+154:    if (!isProviderConnected(CONFIG.opencodeProvider)) {
+156:        `opencode provider '${CONFIG.opencodeProvider}' is not connected. Check your opencode provider configuration.`
+192:    const result = await generateStructuredOutput({
+193:      providerName: CONFIG.opencodeProvider,

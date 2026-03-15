@@ -1,0 +1,8 @@
+235:  // Opencode provider path (when opencodeProvider + opencodeModel configured)
+236:  if (CONFIG.opencodeProvider && CONFIG.opencodeModel) {
+238:      log("opencodeProvider takes precedence over memoryModel for auto-capture");
+241:    const { isProviderConnected, getStatePath, generateStructuredOutput } =
+244:    if (!isProviderConnected(CONFIG.opencodeProvider)) {
+246:        `opencode provider '${CONFIG.opencodeProvider}' is not connected. Check your opencode provider configuration.`
+288:    const result = await generateStructuredOutput({
+289:      providerName: CONFIG.opencodeProvider,

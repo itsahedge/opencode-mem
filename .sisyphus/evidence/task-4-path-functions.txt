@@ -1,0 +1,4 @@
+16:export function setStatePath(path: string): void {
+20:export function getStatePath(): string {
+27:export function setConnectedProviders(providers: string[]): void {
+31:export function isProviderConnected(providerName: string): boolean {

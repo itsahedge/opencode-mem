@@ -1,0 +1,4 @@
+18:import { setStatePath, setConnectedProviders } from "./services/ai/opencode-provider.js";
+42:    const pathResult = await ctx.client.path.get();
+44:      setStatePath(pathResult.data.state);
+48:      setConnectedProviders(providerResult.data.connected);
