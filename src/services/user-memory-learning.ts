@@ -171,8 +171,8 @@ Use the update_user_profile tool to save the ${existingProfile ? "updated" : "ne
         z.object({
           category: z.string(),
           description: z.string(),
-          confidence: z.number().min(0).max(1),
-          evidence: z.array(z.string()).max(3),
+          confidence: z.number(),
+          evidence: z.array(z.string()),
         })
       ),
       patterns: z.array(
