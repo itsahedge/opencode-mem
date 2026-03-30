@@ -5,7 +5,7 @@ import { log } from "./logger.js";
 import { CONFIG } from "../config.js";
 import { userPromptManager } from "./user-prompt/user-prompt-manager.js";
 
-interface ToolCallInfo {
+export interface ToolCallInfo {
   name: string;
   input: string;
 }
@@ -111,7 +111,7 @@ export async function performAutoCapture(
   }
 }
 
-function extractAIContent(messages: any[]): {
+export function extractAIContent(messages: any[]): {
   textResponses: string[];
   toolCalls: ToolCallInfo[];
 } {
@@ -184,7 +184,7 @@ async function getLatestProjectMemory(containerTag: string): Promise<string | nu
   }
 }
 
-function buildMarkdownContext(
+export function buildMarkdownContext(
   userPrompt: string,
   textResponses: string[],
   toolCalls: ToolCallInfo[],
@@ -227,7 +227,7 @@ function buildMarkdownContext(
   return sections.join("\n");
 }
 
-async function generateSummary(
+export async function generateSummary(
   context: string,
   sessionID: string,
   userPrompt: string

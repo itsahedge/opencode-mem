@@ -2,7 +2,7 @@ export type MemoryType = string;
 
 export interface MemoryMetadata {
   type?: MemoryType;
-  source?: "manual" | "auto-capture" | "import" | "api";
+  source?: "manual" | "auto-capture" | "import" | "api" | "backfill";
   tool?: string;
   sessionID?: string;
   reasoning?: string;

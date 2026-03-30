@@ -244,23 +244,38 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       memory: tool({
         description: `Manage and query project memory (MATCH USER LANGUAGE: ${getLanguageName(CONFIG.autoCaptureLanguage || "en")}). Use 'search' with technical keywords/tags, 'add' to store knowledge, 'profile' for preferences.`,
         args: {
-          mode: tool.schema.enum(["add", "search", "profile", "list", "forget", "help"]).optional(),
+          mode: tool.schema
+            .enum(["add", "search", "profile", "list", "forget", "help", "backfill"])
+            .optional(),
           content: tool.schema.string().optional(),
           query: tool.schema.string().optional(),
           tags: tool.schema.string().optional(),
           type: tool.schema.string().optional(),
           memoryId: tool.schema.string().optional(),
           limit: tool.schema.number().optional(),
+          from: tool.schema.string().optional(),
+          to: tool.schema.string().optional(),
+          days: tool.schema.number().optional(),
+          search: tool.schema.string().optional(),
+          sessionIds: tool.schema.array(tool.schema.string()).optional(),
+          batchSize: tool.schema.number().optional(),
         },
         async execute(
           args: {
-            mode?: "add" | "search" | "profile" | "list" | "forget" | "help";
+            mode?: "add" | "search" | "profile" | "list" | "forget" | "help" | "backfill";
             content?: string;
             query?: string;
             tags?: string;
             type?: MemoryType;
             memoryId?: string;
             limit?: number;
+            from?: string;
+            to?: string;
+            days?: number;
+            search?: string;
+            sessionIds?: string[];
+            batchSize?: number;
+            maxSessions?: number;
           },
           toolCtx: { sessionID: string }
         ) {
@@ -299,6 +314,19 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                     { command: "profile", description: "View user profile", args: [] },
                     { command: "list", description: "List recent memories", args: ["limit?"] },
                     { command: "forget", description: "Remove memory", args: ["memoryId"] },
+                    {
+                      command: "backfill",
+                      description: "Import historical sessions into memory",
+                      args: [
+                        "mode?",
+                        "from?",
+                        "to?",
+                        "days?",
+                        "search?",
+                        "sessionIds?",
+                        "batchSize?",
+                      ],
+                    },
                   ],
                   tagGuidance: "Use technical keywords for search. Tags rank highest.",
                 });
@@ -373,6 +401,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                   return JSON.stringify({ success: false, error: "memoryId required" });
                 const delRes = await memoryClient.deleteMemory(args.memoryId);
                 return JSON.stringify({ success: delRes.success, message: `Memory removed` });
+
+              case "backfill":
+                return await handleBackfill(args, ctx, directory);
 
               default:
                 return JSON.stringify({ success: false, error: `Unknown mode: ${mode}` });
@@ -492,4 +523,76 @@ function formatMemoriesForCompaction(memories: any[]): string {
   });
 
   return output;
+}
+
+async function handleBackfill(
+  args: {
+    mode?: "add" | "search" | "profile" | "list" | "forget" | "help" | "backfill";
+    content?: string;
+    query?: string;
+    tags?: string;
+    type?: MemoryType;
+    memoryId?: string;
+    limit?: number;
+    from?: string;
+    to?: string;
+    days?: number;
+    search?: string;
+    sessionIds?: string[];
+    batchSize?: number;
+    maxSessions?: number;
+  },
+  ctx: any,
+  directory: string
+): Promise<string> {
+  const { backfillService } = await import("./services/backfill/backfill-service.js");
+
+  let mode: "all" | "days" | "date-range" | "search" | "session-ids";
+  let options: any = {};
+
+  if (args.days) {
+    mode = "days";
+    options = { mode, days: args.days, maxSessions: args.maxSessions, batchSize: args.batchSize };
+  } else if (args.from || args.to) {
+    mode = "date-range";
+    options = {
+      mode,
+      from: args.from,
+      to: args.to,
+      maxSessions: args.maxSessions,
+      batchSize: args.batchSize,
+    };
+  } else if (args.search) {
+    mode = "search";
+    options = {
+      mode,
+      search: args.search,
+      maxSessions: args.maxSessions,
+      batchSize: args.batchSize,
+    };
+  } else if (args.sessionIds) {
+    mode = "session-ids";
+    options = { mode, sessionIds: args.sessionIds, batchSize: args.batchSize };
+  } else {
+    mode = "all";
+    options = { mode, maxSessions: args.maxSessions, batchSize: args.batchSize };
+  }
+
+  try {
+    const result = await backfillService.runBackfill(ctx, directory, options);
+
+    return JSON.stringify({
+      success: result.success,
+      sessionsProcessed: result.sessionsProcessed,
+      memoriesCreated: result.memoriesCreated,
+      sessionsSkipped: result.sessionsSkipped,
+      errors: result.errors,
+      duration: result.duration,
+    });
+  } catch (error) {
+    return JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }

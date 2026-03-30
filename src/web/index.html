@@ -73,6 +73,9 @@
           <button id="deduplicate-btn" class="btn-maintenance" data-i18n="btn-deduplicate">
             <i data-lucide="refresh-cw" class="icon"></i> Deduplicate
           </button>
+          <button id="backfill-btn" class="btn-maintenance" data-i18n="btn-backfill">
+            <i data-lucide="history" class="icon"></i> Backfill
+          </button>
         </div>
 
         <div class="bulk-actions hidden" id="bulk-actions">
@@ -275,6 +278,126 @@
         </div>
         <div id="changelog-list" class="changelog-list">
           <div class="loading" data-i18n="loading-changelog">Loading changelog...</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="backfill-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 data-i18n="modal-backfill-title">Backfill Historical Sessions</h3>
+          <button class="modal-close" id="backfill-modal-close">
+            <i data-lucide="x" class="icon"></i>
+          </button>
+        </div>
+        <div class="backfill-form">
+          <div class="form-group">
+            <label data-i18n="label-backfill-mode">Mode:</label>
+            <select id="backfill-mode">
+              <option value="all" data-i18n="opt-backfill-all">All Sessions</option>
+              <option value="days" data-i18n="opt-backfill-days">Last N Days</option>
+              <option value="date-range" data-i18n="opt-backfill-date-range">Date Range</option>
+              <option value="search" data-i18n="opt-backfill-search">Search</option>
+              <option value="session-ids" data-i18n="opt-backfill-session-ids">Session IDs</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="backfill-days-group" style="display: none;">
+            <label data-i18n="label-backfill-days">Days:</label>
+            <input type="number" id="backfill-days" min="1" max="365" value="30" />
+          </div>
+
+          <div class="form-row" id="backfill-date-range-group" style="display: none;">
+            <div class="form-group">
+              <label data-i18n="label-backfill-from">From:</label>
+              <input type="date" id="backfill-from" />
+            </div>
+            <div class="form-group">
+              <label data-i18n="label-backfill-to">To:</label>
+              <input type="date" id="backfill-to" />
+            </div>
+          </div>
+
+          <div class="form-group" id="backfill-search-group" style="display: none;">
+            <label data-i18n="label-backfill-search">Search Term:</label>
+            <input
+              type="text"
+              id="backfill-search"
+              data-i18n-placeholder="placeholder-backfill-search"
+              placeholder="Enter search term..."
+            />
+          </div>
+
+          <div class="form-group" id="backfill-session-ids-group" style="display: none;">
+            <label data-i18n="label-backfill-session-ids">Session IDs:</label>
+            <textarea
+              id="backfill-session-ids"
+              rows="4"
+              data-i18n-placeholder="placeholder-backfill-session-ids"
+              placeholder="Enter session IDs (one per line)..."
+            ></textarea>
+            <small class="form-help" data-i18n="help-backfill-session-ids">
+              Enter one session ID per line
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="label-backfill-batch-size">Batch Size:</label>
+            <input type="number" id="backfill-batch-size" min="10" max="500" value="100" />
+            <small class="form-help" data-i18n="help-backfill-batch-size">
+              Number of sessions to process in each batch
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="label-backfill-max-sessions">Max Sessions:</label>
+            <input
+              type="number"
+              id="backfill-max-sessions"
+              min="1"
+              max="10000"
+              data-i18n-placeholder="placeholder-backfill-max-sessions"
+              placeholder=" Unlimited"
+            />
+            <small class="form-help" data-i18n="help-backfill-max-sessions">
+              Leave empty for no limit
+            </small>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="backfill-cancel" data-i18n="btn-cancel">
+            <i data-lucide="x" class="icon"></i> Cancel
+          </button>
+          <button type="button" class="btn-primary" id="backfill-run" data-i18n="btn-run-backfill">
+            <i data-lucide="play" class="icon"></i> Run Backfill
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="backfill-progress-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 data-i18n="modal-backfill-progress-title">Backfill in Progress</h3>
+        </div>
+        <div class="backfill-progress-body">
+          <div aria-live="polite" id="backfill-status-region" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;"></div>
+          <div class="backfill-progress-info">
+            <p id="backfill-progress-text" data-i18n="status-backfill-init">
+            Initializing backfill...
+          </p>
+          <div class="progress-bar-container">
+            <div id="backfill-progress-bar" class="progress-bar" style="width: 0%"></div>
+          </div>
+          <div class="backfill-stats">
+            <span id="backfill-sessions-processed">Sessions: 0</span>
+            <span id="backfill-memories-created">Memories: 0</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="backfill-progress-close" disabled>
+            <i data-lucide="check" class="icon"></i> Done
+          </button>
         </div>
       </div>
     </div>
