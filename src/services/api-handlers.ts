@@ -1042,7 +1042,7 @@ export async function handleRunTagMigrationBatch(
           if (result.success && result.data?.tags) {
             currentTags = result.data.tags;
             db.prepare("UPDATE memories SET tags = ? WHERE id = ?").run(
-              currentTags.join(",","),
+              currentTags.join(","),
               m.id
             );
           }
@@ -1127,12 +1127,9 @@ export async function handleBackfill(options: {
             return response.json();
           },
           messages: async ({ path }: { path: { id: string } }) => {
-            const response = await fetch(
-              `http://localhost:8080/api/sessions/${path.id}/messages`,
-              {
-                headers: { "Content-Type": "application/json" },
-              }
-            );
+            const response = await fetch(`http://localhost:8080/api/sessions/${path.id}/messages`, {
+              headers: { "Content-Type": "application/json" },
+            });
             return response.json();
           },
         },
