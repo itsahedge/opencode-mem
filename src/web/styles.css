@@ -215,10 +215,24 @@ button:disabled {
 }
 
 .btn-maintenance {
-  border-color: #ffaa00;
-  color: #ffaa00;
+  background: #ffaa00;
+  color: #0a0a0a;
+  border: none;
   padding: 8px 16px;
   font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-maintenance .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-maintenance:hover {
+  background: #ffcc66;
+  transform: translateY(-1px);
 }
 
 .btn-maintenance:hover {
@@ -1650,14 +1664,15 @@ textarea:focus-visible {
 
 .backfill-form label {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   color: #888;
   margin-bottom: 5px;
   text-transform: uppercase;
 }
 
 .backfill-form input,
-.backfill-form select {
+.backfill-form select,
+.backfill-form textarea {
   width: 100%;
   padding: 10px;
   background: #0a0a0a;
@@ -1667,8 +1682,14 @@ textarea:focus-visible {
   font-size: 13px;
 }
 
+.backfill-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
 .backfill-form input:focus,
-.backfill-form select:focus {
+.backfill-form select:focus,
+.backfill-form textarea:focus {
   outline: none;
   border-color: #00ff00;
 }
@@ -1678,6 +1699,12 @@ textarea:focus-visible {
   font-size: 11px;
   color: #666;
   margin-top: 4px;
+}
+
+.backfill-form input:focus + small.form-help,
+.backfill-form select:focus + small.form-help,
+.backfill-form textarea:focus + small.form-help {
+  color: #888;
 }
 
 .backfill-progress-body {

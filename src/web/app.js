@@ -710,10 +710,12 @@ function updateBackfillMode() {
   const daysGroup = document.getElementById("backfill-days-group");
   const dateRangeGroup = document.getElementById("backfill-date-range-group");
   const searchGroup = document.getElementById("backfill-search-group");
+  const sessionIdsGroup = document.getElementById("backfill-session-ids-group");
 
   daysGroup.style.display = mode === "days" ? "block" : "none";
   dateRangeGroup.style.display = mode === "date-range" ? "block" : "none";
   searchGroup.style.display = mode === "search" ? "block" : "none";
+  sessionIdsGroup.style.display = mode === "session-ids" ? "block" : "none";
 }
 
 async function runBackfill() {
@@ -723,6 +725,7 @@ async function runBackfill() {
   const maxSessions = maxSessionsStr ? parseInt(maxSessionsStr) : undefined;
 
   const options: any = { mode, batchSize, maxSessions };
+  const ariaLiveRegion = document.getElementById("backfill-status-region");
 
   if (mode === "days") {
     options.days = parseInt(document.getElementById("backfill-days").value) || 30;
@@ -739,10 +742,21 @@ async function runBackfill() {
       showToast("Please enter a search term", "error");
       return;
     }
+  } else if (mode === "session-ids") {
+    const sessionIdsText = document.getElementById("backfill-session-ids").value.trim();
+    if (!sessionIdsText) {
+      showToast("Please enter at least one session ID", "error");
+      return;
+    }
+    options.sessionIds = sessionIdsText
+      .split("\n")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
   }
 
   closeBackfillModal();
   document.getElementById("backfill-progress-modal").classList.remove("hidden");
+  ariaLiveRegion.textContent = "Starting backfill process...";
 
   const result = await fetchAPI("/api/backfill", {
     method: "POST",
@@ -752,14 +766,16 @@ async function runBackfill() {
 
   if (result.success) {
     const data = result.data;
+    ariaLiveRegion.textContent = `Backfill complete. ${data.sessionsProcessed} sessions processed, ${data.memoriesCreated} memories created.`;
     showToast(
       `Backfill complete! ${data.sessionsProcessed} sessions, ${data.memoriesCreated} memories created.`,
       "success"
     );
-    closeBackfillProgressModal();
     await loadMemories();
     await loadStats();
+    setTimeout(closeBackfillProgressModal, 1500);
   } else {
+    ariaLiveRegion.textContent = `Backfill failed: ${result.error}`;
     showToast(result.error || "Backfill failed", "error");
     closeBackfillProgressModal();
   }
@@ -1260,10 +1276,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("backfill-modal-close").addEventListener("click", closeBackfillModal);
   document.getElementById("backfill-cancel").addEventListener("click", closeBackfillModal);
   document.getElementById("backfill-run").addEventListener("click", runBackfill);
-  document
-    .getElementById("backfill-progress-close")
-    .addEventListener("click", closeBackfillProgressModal);
+  document.getElementById("backfill-progress-close").addEventListener("click", closeBackfillProgressModal);
   document.getElementById("backfill-mode").addEventListener("change", updateBackfillMode);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (!document.getElementById("backfill-modal").classList.contains("hidden")) {
+        closeBackfillModal();
+      } else if (!document.getElementById("backfill-progress-modal").classList.contains("hidden")) {
+        closeBackfillProgressModal();
+      }
+    }
+  });
 
   await loadTags();
   await loadMemories();

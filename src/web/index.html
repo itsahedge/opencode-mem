@@ -298,6 +298,7 @@
               <option value="days" data-i18n="opt-backfill-days">Last N Days</option>
               <option value="date-range" data-i18n="opt-backfill-date-range">Date Range</option>
               <option value="search" data-i18n="opt-backfill-search">Search</option>
+              <option value="session-ids" data-i18n="opt-backfill-session-ids">Session IDs</option>
             </select>
           </div>
 
@@ -325,6 +326,19 @@
               data-i18n-placeholder="placeholder-backfill-search"
               placeholder="Enter search term..."
             />
+          </div>
+
+          <div class="form-group" id="backfill-session-ids-group" style="display: none;">
+            <label data-i18n="label-backfill-session-ids">Session IDs:</label>
+            <textarea
+              id="backfill-session-ids"
+              rows="4"
+              data-i18n-placeholder="placeholder-backfill-session-ids"
+              placeholder="Enter session IDs (one per line)..."
+            ></textarea>
+            <small class="form-help" data-i18n="help-backfill-session-ids">
+              Enter one session ID per line
+            </small>
           </div>
 
           <div class="form-group">
@@ -361,12 +375,13 @@
       </div>
     </div>
 
-    <div id="backfill-progress-modal" class="modal hidden">
+    <div id="backfill-progress-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content">
         <div class="modal-header">
           <h3 data-i18n="modal-backfill-progress-title">Backfill in Progress</h3>
         </div>
         <div class="backfill-progress-body">
+          <div aria-live="polite" id="backfill-status-region" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;"></div>
           <div class="backfill-progress-info">
             <p id="backfill-progress-text" data-i18n="status-backfill-init">
             Initializing backfill...
