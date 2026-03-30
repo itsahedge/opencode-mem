@@ -1042,7 +1042,7 @@ export async function handleRunTagMigrationBatch(
           if (result.success && result.data?.tags) {
             currentTags = result.data.tags;
             db.prepare("UPDATE memories SET tags = ? WHERE id = ?").run(
-              currentTags.join(","),
+              currentTags.join(",","),
               m.id
             );
           }
@@ -1082,6 +1082,121 @@ export async function handleRunTagMigrationBatch(
       data: { processed: migrationProgress.processed, total: migrationProgress.total, hasMore },
     };
   } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleBackfill(options: {
+  mode?: string;
+  from?: string;
+  to?: string;
+  days?: number;
+  search?: string;
+  sessionIds?: string[];
+  maxSessions?: number;
+  batchSize?: number;
+}): Promise<
+  ApiResponse<{
+    sessionsProcessed: number;
+    sessionsSkipped: number;
+    memoriesCreated: number;
+    errors: any[];
+    duration: number;
+  }>
+> {
+  try {
+    const { backfillService } = await import("./backfill/backfill-service.js");
+    const { getTags } = await import("./tags.js");
+
+    const directory = process.cwd();
+    const tags = getTags(directory);
+
+    const ctx = {
+      client: {
+        session: {
+          list: async () => {
+            const response = await fetch("http://localhost:8080/api/sessions", {
+              headers: { "Content-Type": "application/json" },
+            });
+            return response.json();
+          },
+          get: async ({ path }: { path: { id: string } }) => {
+            const response = await fetch(`http://localhost:8080/api/sessions/${path.id}`, {
+              headers: { "Content-Type": "application/json" },
+            });
+            return response.json();
+          },
+          messages: async ({ path }: { path: { id: string } }) => {
+            const response = await fetch(
+              `http://localhost:8080/api/sessions/${path.id}/messages`,
+              {
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+            return response.json();
+          },
+        },
+      },
+    } as any;
+
+    let mode: "all" | "days" | "date-range" | "search" | "session-ids";
+    let backfillOptions: any = {};
+
+    if (options.days) {
+      mode = "days";
+      backfillOptions = {
+        mode,
+        days: options.days,
+        maxSessions: options.maxSessions,
+        batchSize: options.batchSize,
+      };
+    } else if (options.from || options.to) {
+      mode = "date-range";
+      backfillOptions = {
+        mode,
+        from: options.from,
+        to: options.to,
+        maxSessions: options.maxSessions,
+        batchSize: options.batchSize,
+      };
+    } else if (options.search) {
+      mode = "search";
+      backfillOptions = {
+        mode,
+        search: options.search,
+        maxSessions: options.maxSessions,
+        batchSize: options.batchSize,
+      };
+    } else if (options.sessionIds && options.sessionIds.length > 0) {
+      mode = "session-ids";
+      backfillOptions = {
+        mode,
+        sessionIds: options.sessionIds,
+        batchSize: options.batchSize,
+      };
+    } else {
+      mode = "all";
+      backfillOptions = {
+        mode,
+        maxSessions: options.maxSessions,
+        batchSize: options.batchSize,
+      };
+    }
+
+    const result = await backfillService.runBackfill(ctx, directory, backfillOptions);
+
+    return {
+      success: result.success,
+      data: {
+        sessionsProcessed: result.sessionsProcessed,
+        sessionsSkipped: result.sessionsSkipped,
+        memoriesCreated: result.memoriesCreated,
+        errors: result.errors,
+        duration: result.duration,
+      },
+    };
+  } catch (error) {
+    log("handleBackfill: error", { error: String(error) });
     return { success: false, error: String(error) };
   }
 }

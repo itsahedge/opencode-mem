@@ -692,6 +692,79 @@ async function runDeduplication() {
   }
 }
 
+function openBackfillModal() {
+  document.getElementById("backfill-modal").classList.remove("hidden");
+  updateBackfillMode();
+}
+
+function closeBackfillModal() {
+  document.getElementById("backfill-modal").classList.add("hidden");
+}
+
+function closeBackfillProgressModal() {
+  document.getElementById("backfill-progress-modal").classList.add("hidden");
+}
+
+function updateBackfillMode() {
+  const mode = document.getElementById("backfill-mode").value;
+  const daysGroup = document.getElementById("backfill-days-group");
+  const dateRangeGroup = document.getElementById("backfill-date-range-group");
+  const searchGroup = document.getElementById("backfill-search-group");
+
+  daysGroup.style.display = mode === "days" ? "block" : "none";
+  dateRangeGroup.style.display = mode === "date-range" ? "block" : "none";
+  searchGroup.style.display = mode === "search" ? "block" : "none";
+}
+
+async function runBackfill() {
+  const mode = document.getElementById("backfill-mode").value;
+  const batchSize = parseInt(document.getElementById("backfill-batch-size").value) || 100;
+  const maxSessionsStr = document.getElementById("backfill-max-sessions").value;
+  const maxSessions = maxSessionsStr ? parseInt(maxSessionsStr) : undefined;
+
+  const options: any = { mode, batchSize, maxSessions };
+
+  if (mode === "days") {
+    options.days = parseInt(document.getElementById("backfill-days").value) || 30;
+  } else if (mode === "date-range") {
+    options.from = document.getElementById("backfill-from").value;
+    options.to = document.getElementById("backfill-to").value;
+    if (!options.from || !options.to) {
+      showToast("Please select both from and to dates", "error");
+      return;
+    }
+  } else if (mode === "search") {
+    options.search = document.getElementById("backfill-search").value.trim();
+    if (!options.search) {
+      showToast("Please enter a search term", "error");
+      return;
+    }
+  }
+
+  closeBackfillModal();
+  document.getElementById("backfill-progress-modal").classList.remove("hidden");
+
+  const result = await fetchAPI("/api/backfill", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(options),
+  });
+
+  if (result.success) {
+    const data = result.data;
+    showToast(
+      `Backfill complete! ${data.sessionsProcessed} sessions, ${data.memoriesCreated} memories created.`,
+      "success"
+    );
+    closeBackfillProgressModal();
+    await loadMemories();
+    await loadStats();
+  } else {
+    showToast(result.error || "Backfill failed", "error");
+    closeBackfillProgressModal();
+  }
+}
+
 function startAutoRefresh() {
   if (state.autoRefreshInterval) {
     clearInterval(state.autoRefreshInterval);
@@ -1168,6 +1241,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("cleanup-btn").addEventListener("click", runCleanup);
   document.getElementById("deduplicate-btn").addEventListener("click", runDeduplication);
+  document.getElementById("backfill-btn").addEventListener("click", openBackfillModal);
 
   document
     .getElementById("migration-confirm-checkbox")
@@ -1182,6 +1256,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("edit-modal").addEventListener("click", (e) => {
     if (e.target.id === "edit-modal") closeModal();
   });
+
+  document.getElementById("backfill-modal-close").addEventListener("click", closeBackfillModal);
+  document.getElementById("backfill-cancel").addEventListener("click", closeBackfillModal);
+  document.getElementById("backfill-run").addEventListener("click", runBackfill);
+  document
+    .getElementById("backfill-progress-close")
+    .addEventListener("click", closeBackfillProgressModal);
+  document.getElementById("backfill-mode").addEventListener("change", updateBackfillMode);
 
   await loadTags();
   await loadMemories();
